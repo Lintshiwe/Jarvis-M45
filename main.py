@@ -47,6 +47,7 @@ BASE_DIR        = get_base_dir()
 API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
 PROMPT_PATH     = BASE_DIR / "core" / "prompt.txt"
 LIVE_MODEL          = "models/gemini-2.5-flash-native-audio-preview-12-2025"
+LIVE_MODEL_FALLBACK = "models/gemini-2.0-flash-live-preview-04-09"
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000
 RECEIVE_SAMPLE_RATE = 24000
@@ -989,8 +990,12 @@ class JarvisLive:
         except asyncio.CancelledError:
             print("[JARVIS] 🛑 Recv cancelled", flush=True)
         except Exception as e:
-            print(f"[JARVIS] ❌ Recv: {e}", flush=True)
-            traceback.print_exc()
+            err_str = str(e)
+            if "1008" in err_str:
+                print(f"[JARVIS] ❌ Recv: API policy error", flush=True)
+            else:
+                print(f"[JARVIS] ❌ Recv: {e}", flush=True)
+                traceback.print_exc()
             raise
 
     async def _play_audio(self):
@@ -1040,14 +1045,18 @@ class JarvisLive:
             http_options={"api_version": "v1beta"}
         )
 
+        model    = LIVE_MODEL
+        attempts = 0
+        MAX_ATTEMPTS = 5
+
         while True:
             try:
-                print("[JARVIS] 🔌 Connecting...")
+                print(f"[JARVIS] 🔌 Connecting... (model={model.split('/')[-1]})")
                 self.ui.set_state("THINKING")
                 config = self._build_config()
 
                 async with (
-                    client.aio.live.connect(model=LIVE_MODEL, config=config) as session,
+                    client.aio.live.connect(model=model, config=config) as session,
                     asyncio.TaskGroup() as tg,
                 ):
                     self.session        = session
@@ -1057,6 +1066,7 @@ class JarvisLive:
                     self._turn_done_event = asyncio.Event()
 
                     print("[JARVIS] ✅ Connected.")
+                    attempts = 0  # reset on successful connection
                     self.ui.set_state("LISTENING")
                     self.ui.write_log("SYS: JARVIS online.")
 
@@ -1066,12 +1076,37 @@ class JarvisLive:
                     tg.create_task(self._play_audio())
 
             except Exception as e:
-                print(f"[JARVIS] ⚠️ {e}")
-                traceback.print_exc()
+                err_str = str(e)
+                if "1008" in err_str or "policy violation" in err_str:
+                    attempts += 1
+                    if attempts >= MAX_ATTEMPTS:
+                        print(f"[JARVIS] ❌ API policy error persists after {MAX_ATTEMPTS} attempts.")
+                        print(f"[JARVIS] 💡 Your API key may not support Gemini Live Audio."
+                              f" Get a key at https://aistudio.google.com")
+                        self.ui.write_log("ERR: Gemini Live API not available for this API key.")
+                        self.ui.set_state("ERROR")
+                        return
+                    if attempts == 3:
+                        print("[JARVIS] 🔄 Switching to fallback model...")
+                        model = LIVE_MODEL_FALLBACK
+                    elif attempts >= 2:
+                        print(f"[JARVIS] ⚠️ API error #{attempts}: {err_str[:120]}")
+                    else:
+                        traceback.print_exc()
+                elif "ConnectionClosed" in err_str or "closed" in err_str.lower():
+                    print(f"[JARVIS] ⚠️ WebSocket closed", flush=True)
+                else:
+                    print(f"[JARVIS] ⚠️ {err_str[:120]}")
+                    traceback.print_exc()
+            except BaseException:
+                print(f"[JARVIS] ⚠️ Session terminated", flush=True)
+                raise
+
             self.set_speaking(False)
             self.ui.set_state("THINKING")
-            print("[JARVIS] 🔄 Reconnecting in 3s...")
-            await asyncio.sleep(3)
+            delay = min(attempts * 2, 10)
+            print(f"[JARVIS] 🔄 Reconnecting in {delay}s...")
+            await asyncio.sleep(delay)
 
 class MiniJarvisUI:
     """Lightweight PiP UI with same interface as JarvisUI."""
