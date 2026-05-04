@@ -1077,7 +1077,16 @@ class JarvisLive:
 
             except Exception as e:
                 err_str = str(e)
-                if "1008" in err_str or "policy violation" in err_str:
+                # Check ExceptionGroup sub-exceptions too
+                sub_errs = []
+                if hasattr(e, 'exceptions'):
+                    sub_errs = [str(se) for se in e.exceptions]
+
+                is_policy = (
+                    "1008" in err_str or "policy violation" in err_str or
+                    any("1008" in s or "policy violation" in s for s in sub_errs)
+                )
+                if is_policy:
                     attempts += 1
                     if attempts >= MAX_ATTEMPTS:
                         print(f"[JARVIS] ❌ API policy error persists after {MAX_ATTEMPTS} attempts.")
@@ -1091,8 +1100,6 @@ class JarvisLive:
                         model = LIVE_MODEL_FALLBACK
                     elif attempts >= 2:
                         print(f"[JARVIS] ⚠️ API error #{attempts}: {err_str[:120]}")
-                    else:
-                        traceback.print_exc()
                 elif "ConnectionClosed" in err_str or "closed" in err_str.lower():
                     print(f"[JARVIS] ⚠️ WebSocket closed", flush=True)
                 else:
@@ -1102,9 +1109,16 @@ class JarvisLive:
                 print(f"[JARVIS] ⚠️ Session terminated", flush=True)
                 raise
 
+            # cleanup before reconnect to avoid segfault
+            self.session = None
+            self._turn_done_event = None
+            try:
+                self.audio_in_queue = asyncio.Queue(maxsize=1)
+            except Exception:
+                pass
             self.set_speaking(False)
             self.ui.set_state("THINKING")
-            delay = min(attempts * 2, 10)
+            delay = max(1, min(attempts * 2, 10))
             print(f"[JARVIS] 🔄 Reconnecting in {delay}s...")
             await asyncio.sleep(delay)
 

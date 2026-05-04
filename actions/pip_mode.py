@@ -185,7 +185,7 @@ class PiPWindow(QWidget):
 
         p.setPen(QColor(255, 255, 255, 210))
         p.setFont(QFont("Courier New", 9, QFont.Weight.Bold))
-        p.drawText(QRectF(label_x, 3, label_w, 16),
+        p.drawText(QRectF(label_x, 2, label_w, 15),
                    Qt.AlignmentFlag.AlignCenter, "JARVIS")
 
         if self._muted:
@@ -203,39 +203,33 @@ class PiPWindow(QWidget):
 
         p.setPen(st_col)
         p.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
-        p.drawText(QRectF(label_x, 20, label_w, 12),
+        p.drawText(QRectF(label_x, 17, label_w, 12),
                    Qt.AlignmentFlag.AlignCenter, state_txt)
 
+        # M45 + mute mic on same row, centred
+        mute_icon = "🔇" if self._muted else "🎤"
+        mute_col  = ROSE if self._muted else QColor(255, 255, 255, 150 if not self._hover_mute else 220)
         p.setPen(QColor(148, 163, 184, 140))
         p.setFont(QFont("Courier New", 6))
-        p.drawText(QRectF(label_x, 31, label_w, 10),
-                   Qt.AlignmentFlag.AlignCenter, "M45")
+        p.drawText(QRectF(label_x, 29, label_w, 13),
+                   Qt.AlignmentFlag.AlignCenter, f"M45  {mute_icon}")
+        # highlight mic when hovered
+        if self._hover_mute:
+            p.setPen(mute_col)
+            p.drawText(QRectF(label_x, 29, label_w, 13),
+                       Qt.AlignmentFlag.AlignCenter, f"M45  {mute_icon}")
 
-        # mute button (right side)
-        mute_x = W - 42
-        mute_w = 30
-        mute_r = QRectF(mute_x, 7, mute_w, H - 14)
-        mute_alpha = 180 if self._hover_mute else 100
-        mute_col = ROSE if self._muted else QColor(255, 255, 255, mute_alpha)
-        p.setPen(QPen(mute_col, 1.5))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawRoundedRect(mute_r, 6, 6)
-
-        if self._muted:
-            p.setPen(QPen(ROSE, 1.5))
-            p.setFont(QFont("Arial", 8, QFont.Weight.Bold))
-            p.drawText(mute_r, Qt.AlignmentFlag.AlignCenter, "🔇")
-        else:
-            p.setPen(QPen(QColor(255, 255, 255, mute_alpha), 1.5))
-            p.setFont(QFont("Arial", 8))
-            p.drawText(mute_r, Qt.AlignmentFlag.AlignCenter, "🎤")
-
+        # Store mute click zone (right half of bottom row)
+        self._mute_zone = QRectF(label_x + label_w * 0.5, 28, label_w * 0.5, 14)
         p.end()
 
     # ── mouse ──────────────────────────────────────────────────────
 
     def _mute_rect(self):
-        return QRectF(self.width() - 42, 7, 30, self.height() - 14)
+        if hasattr(self, '_mute_zone'):
+            return self._mute_zone
+        # fallback
+        return QRectF(self.width() * 0.5, 28, self.width() * 0.35, 14)
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -260,8 +254,6 @@ class PiPWindow(QWidget):
         self._drag_pos = None
 
     def mouseDoubleClickEvent(self, _):
-        if self._mute_rect().contains(self.mapFromGlobal(self.cursor().pos())):
-            return
         self.closed.emit()
         self.close()
 
