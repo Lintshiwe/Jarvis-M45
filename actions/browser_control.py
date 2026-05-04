@@ -476,18 +476,22 @@ class _BrowserSession:
 
         profile = _real_profile_dir(self.browser_name)
 
+        chromium_args = [
+            "--start-maximized",
+            "--disable-blink-features=AutomationControlled",
+            "--no-first-run",
+            "--disable-default-apps",
+            "--no-default-browser-check",
+        ]
+        if _OS == "Linux":
+            chromium_args.append("--no-sandbox")
+
         kwargs = {
             "headless":    False,
             "slow_mo":     0,
             "viewport":    None,
             "no_viewport": True,
-            "args": [
-                "--start-maximized",
-                "--disable-blink-features=AutomationControlled",
-                "--no-first-run",
-                "--disable-default-apps",
-                "--no-default-browser-check",
-            ],
+            "args":        chromium_args,
         }
 
         if exe:

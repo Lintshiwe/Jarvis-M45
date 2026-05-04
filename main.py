@@ -1175,6 +1175,11 @@ class MiniJarvisUI:
 
 def main():
     import argparse
+    import signal
+
+    # Install graceful SIGINT handler (prevents KeyboardInterrupt during Qt painting)
+    signal.signal(signal.SIGINT, lambda sig, frame: QApplication.quit())
+
     parser = argparse.ArgumentParser(description="JARVIS M45 AI Assistant")
     parser.add_argument("--pip", action="store_true", help="Picture-in-Picture mode (round transparent window)")
     parser.add_argument("--size", type=int, default=200, help="PiP window size (default: 200px)")

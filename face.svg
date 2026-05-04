@@ -1,76 +1,72 @@
 <svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
 
   <defs>
-    <!-- Background gradient -->
-    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+    <!-- Background -->
+    <radialGradient id="bg" cx="50%" cy="50%" r="60%">
       <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#F0F9FF"/>
+      <stop offset="100%" stop-color="#F3F4F6"/>
     </radialGradient>
 
-    <!-- Text gradient -->
-    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4FC3F7"/>
-      <stop offset="50%" stop-color="#6EE7B7"/>
-      <stop offset="100%" stop-color="#A78BFA"/>
+    <!-- Primary gradient -->
+    <linearGradient id="primary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
     </linearGradient>
 
-    <!-- Soft blur -->
-    <filter id="softGlow">
-      <feGaussianBlur stdDeviation="3"/>
-    </filter>
+    <!-- Accent gradient -->
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
   </defs>
 
   <!-- Background -->
-  <rect width="500" height="500" fill="url(#bgGrad)"/>
+  <rect width="500" height="500" fill="url(#bg)"/>
 
-  <!-- Uneven particle ring -->
-  <g fill="#6EE7B7">
+  <!-- Subtle orbital guide -->
+  <circle cx="250" cy="250" r="160"
+          stroke="#E5E7EB"
+          stroke-width="2"
+          fill="none"/>
 
-    <!-- random-ish particles -->
-    <circle cx="250" cy="80" r="6"/>
-    <circle cx="320" cy="100" r="4"/>
-    <circle cx="380" cy="170" r="7"/>
-    <circle cx="400" cy="250" r="5"/>
-    <circle cx="370" cy="330" r="6"/>
-    <circle cx="310" cy="390" r="4"/>
-    <circle cx="250" cy="420" r="7"/>
-    <circle cx="180" cy="390" r="5"/>
-    <circle cx="120" cy="330" r="6"/>
-    <circle cx="100" cy="250" r="4"/>
-    <circle cx="130" cy="170" r="7"/>
-    <circle cx="190" cy="100" r="5"/>
+  <!-- Controlled particle system -->
+  <g>
+
+    <!-- Primary nodes -->
+    <circle cx="250" cy="90" r="6" fill="url(#primary)"/>
+    <circle cx="390" cy="250" r="5" fill="url(#primary)"/>
+    <circle cx="250" cy="410" r="6" fill="url(#primary)"/>
+    <circle cx="110" cy="250" r="5" fill="url(#primary)"/>
+
+    <!-- Secondary nodes (asymmetrical but balanced) -->
+    <circle cx="340" cy="140" r="4" fill="url(#accent)"/>
+    <circle cx="360" cy="330" r="4" fill="url(#accent)"/>
+    <circle cx="160" cy="360" r="4" fill="url(#accent)"/>
+    <circle cx="140" cy="150" r="4" fill="url(#accent)"/>
 
   </g>
 
-  <!-- Secondary accent particles -->
-  <g fill="#FCD34D" opacity="0.8">
-    <circle cx="350" cy="140" r="3"/>
-    <circle cx="390" cy="290" r="3"/>
-    <circle cx="150" cy="360" r="3"/>
-    <circle cx="110" cy="210" r="3"/>
-  </g>
+  <!-- Center core -->
+  <circle cx="250" cy="250" r="95" fill="#FFFFFF"/>
 
-  <!-- Soft center glow -->
-  <circle cx="250" cy="250" r="110" fill="#FFFFFF" filter="url(#softGlow)" opacity="0.6"/>
-
-  <!-- JARVIS text (centerpiece) -->
-  <text x="250" y="260"
+  <!-- Brand name -->
+  <text x="250" y="255"
         text-anchor="middle"
-        font-size="48"
-        font-family="Poppins, Montserrat, sans-serif"
-        font-weight="700"
-        letter-spacing="4"
-        fill="url(#textGrad)">
+        font-size="42"
+        font-family="Inter, Poppins, sans-serif"
+        font-weight="600"
+        letter-spacing="6"
+        fill="#111827">
     JARVIS
   </text>
 
-  <!-- M45 subtitle -->
-  <text x="250" y="300"
+  <!-- Sub-label -->
+  <text x="250" y="290"
         text-anchor="middle"
-        font-size="18"
-        font-family="Poppins, sans-serif"
+        font-size="16"
+        font-family="Inter, sans-serif"
         fill="#6B7280"
-        letter-spacing="3">
+        letter-spacing="4">
     M45
   </text>
 

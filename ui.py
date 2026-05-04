@@ -52,13 +52,13 @@ class C:
     BORDER    = "#BAE6FD"
     BORDER_B  = "#7DD3FC"
     BORDER_A  = "#38BDF8"
-    PRI       = "#4FC3F7"
-    PRI_DIM   = "#BAE6FD"
-    PRI_GHO   = "#E0F2FE"
-    ACC       = "#A78BFA"
+    PRI       = "#3B82F6"
+    PRI_DIM   = "#93C5FD"
+    PRI_GHO   = "#DBEAFE"
+    ACC       = "#6366F1"
     ACC2      = "#FCD34D"
-    GREEN     = "#6EE7B7"
-    GREEN_D   = "#34D399"
+    GREEN     = "#10B981"
+    GREEN_D   = "#059669"
     RED       = "#F87171"
     MUTED_C   = "#FB7185"
     TEXT      = "#1E293B"
@@ -242,6 +242,278 @@ class _SysMetrics:
 
 _metrics = _SysMetrics()
 
+
+class _ParticleCore:
+    """Animated particle system replacing the static face image.
+
+    Normal:    Blue core with orbiting blue particles (sun-like glow)
+    Listening: Particles orbit faster, more energetic wobble
+    Speaking:  Core turns green, colour propagates outward with delay
+    Thinking:  Core turns indigo/purple
+    Muted:     Core dims to soft rose
+    """
+    def __init__(self):
+        self.core_color       = QColor(C.PRI)
+        self.target_core      = QColor(C.PRI)
+        self.core_pulse       = 1.0
+        self.tgt_core_pulse   = 1.0
+        self.propagation      = 0.0          # 0 = core only, 1 = all particles
+        self.propagation_tgt  = 0.0
+        self.num_p            = 22
+        self.particles: list[dict] = []
+        self._init()
+
+    def _init(self):
+        for i in range(self.num_p):
+            angle = (i / self.num_p) * 2 * math.pi + random.uniform(-0.12, 0.12)
+            self.particles.append({
+                "angle":       angle,
+                "radius_frac": 0.22 + random.uniform(-0.035, 0.035),
+                "size":        random.uniform(2.8, 6.5),
+                "orbit_spd":   random.uniform(0.4, 0.9),
+                "wobble_amp":  random.uniform(0.003, 0.012),
+                "wobble_phs":  random.uniform(0, 2 * math.pi),
+                "color":       QColor(C.PRI),
+                "tgt_color":   QColor(C.PRI),
+                "glow_sz":     random.uniform(10, 20),
+            })
+
+    def set_state(self, state: str, muted: bool):
+        if muted:
+            self.target_core       = QColor(C.MUTED_C)
+            self.tgt_core_pulse    = 0.85
+            self.propagation_tgt   = 0.0
+        elif state == "SPEAKING":
+            self.target_core       = QColor(C.GREEN)
+            self.tgt_core_pulse    = 1.25
+            self.propagation_tgt   = 1.0
+        elif state == "LISTENING":
+            self.target_core       = QColor(C.PRI)
+            self.tgt_core_pulse    = 1.1
+            self.propagation_tgt   = 0.0
+        elif state in ("THINKING", "PROCESSING"):
+            self.target_core       = QColor(C.ACC)
+            self.tgt_core_pulse    = 1.05
+            self.propagation_tgt   = 0.0
+        else:
+            self.target_core       = QColor(C.PRI)
+            self.tgt_core_pulse    = 1.0
+            self.propagation_tgt   = 0.0
+
+    def step(self, dt: float, listening: bool):
+        # smooth core colour
+        cr, cg_c, cb = self.core_color.red(), self.core_color.green(), self.core_color.blue()
+        tr2, tg2, tb2 = self.target_core.red(), self.target_core.green(), self.target_core.blue()
+        sp_c = 0.07
+        self.core_color = QColor(
+            int(cr + (tr2 - cr) * sp_c),
+            int(cg_c + (tg2 - cg_c) * sp_c),
+            int(cb + (tb2 - cb) * sp_c),
+        )
+        # core pulse
+        self.core_pulse += (self.tgt_core_pulse - self.core_pulse) * 0.1
+
+        # propagation wave
+        self.propagation += (self.propagation_tgt - self.propagation) * 0.035
+
+        for i, p in enumerate(self.particles):
+            spd = p["orbit_spd"]
+            if listening:
+                spd *= 1.8
+            elif self.propagation_tgt > 0.5:   # speaking
+                spd *= 1.3
+            p["angle"] += spd * dt
+
+            # colour propagation — delay from core to outer particles
+            threshold = i / self.num_p
+            if self.propagation_tgt > 0.5:
+                p["tgt_color"] = QColor(C.GREEN) if threshold < self.propagation else QColor(C.PRI)
+            else:
+                p["tgt_color"] = QColor(C.GREEN) if threshold > self.propagation else QColor(C.PRI)
+
+            # smooth particle colour
+            pr, pg, pb = p["color"].red(), p["color"].green(), p["color"].blue()
+            ptr, ptg, ptb = p["tgt_color"].red(), p["tgt_color"].green(), p["tgt_color"].blue()
+            p["color"] = QColor(
+                int(pr + (ptr - pr) * 0.05),
+                int(pg + (ptg - pg) * 0.05),
+                int(pb + (ptb - pb) * 0.05),
+            )
+
+    def paint(self, p: QPainter, cx: float, cy: float, fw: float, tick: int):
+        core_r = fw * 0.085 * self.core_pulse
+
+        # outer glow rings
+        for i in range(5, 0, -1):
+            r = core_r * (1.0 + i * 0.35)
+            a = int(35 / i)
+            col = QColor(self.core_color)
+            col.setAlpha(a)
+            p.setBrush(QBrush(col))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.drawEllipse(QRectF(cx - r, cy - r, r * 2, r * 2))
+
+        # orbital guide rings (subtle)
+        for ring_frac in [0.16, 0.22, 0.28]:
+            rr = fw * ring_frac
+            pen = QPen(QColor(C.BORDER), 1)
+            pen.setStyle(Qt.PenStyle.DotLine)
+            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(QRectF(cx - rr, cy - rr, rr * 2, rr * 2))
+
+        # orbiting particles
+        for pt in self.particles:
+            r   = fw * pt["radius_frac"]
+            wob = math.sin(tick * 0.04 + pt["wobble_phs"]) * pt["wobble_amp"]
+            rr2 = r * (1.0 + wob * 2)
+            px  = cx + math.cos(pt["angle"]) * rr2
+            py  = cy + math.sin(pt["angle"]) * rr2
+            sz  = pt["size"]
+
+            # glow disc
+            gl = QColor(pt["color"])
+            gl.setAlpha(35)
+            p.setBrush(QBrush(gl))
+            p.setPen(Qt.PenStyle.NoPen)
+            gz = pt["glow_sz"]
+            p.drawEllipse(QRectF(px - gz / 2, py - gz / 2, gz, gz))
+
+            # particle dot
+            p.setBrush(QBrush(pt["color"]))
+            p.drawEllipse(QRectF(px - sz / 2, py - sz / 2, sz, sz))
+
+        # core solid
+        p.setBrush(QBrush(self.core_color.lighter(135)))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawEllipse(QRectF(cx - core_r, cy - core_r, core_r * 2, core_r * 2))
+
+        # inner bright highlight
+        in_r = core_r * 0.45
+        p.setBrush(QBrush(QColor(255, 255, 255, 100)))
+        p.drawEllipse(QRectF(cx - in_r, cy - in_r * 0.6, in_r * 2, in_r * 2))
+
+
+class SplashScreen(QWidget):
+    """Particle-animated splash shown at application start."""
+    dismissed = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setFixedSize(420, 420)
+
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.move((screen.width() - 420) // 2, (screen.height() - 420) // 2)
+
+        self._opacity  = 0.0
+        self._fade_in  = True
+        self._tick     = 0
+        self._particles: list[dict] = []
+        logo_colors = [
+            QColor("#3B82F6"), QColor("#06B6D4"),
+            QColor("#10B981"), QColor("#6366F1"),
+        ]
+        for i in range(30):
+            ang = (i / 30) * 2 * math.pi + random.uniform(-0.08, 0.08)
+            self._particles.append({
+                "angle":    ang,
+                "radius":   80 + random.uniform(0, 45),
+                "size":     random.uniform(3, 8),
+                "speed":    random.uniform(0.5, 1.5),
+                "color":    random.choice(logo_colors),
+                "wobble_a": random.uniform(2, 8),
+                "wobble_p": random.uniform(0, 2 * math.pi),
+            })
+
+        self._tmr = QTimer(self)
+        self._tmr.timeout.connect(self._step)
+        self._tmr.start(16)
+
+        QTimer.singleShot(2500, self._start_fade_out)
+
+    def _step(self):
+        self._tick += 1
+        if self._fade_in:
+            self._opacity = min(1.0, self._opacity + 0.04)
+        else:
+            self._opacity = max(0.0, self._opacity - 0.035)
+            if self._opacity <= 0.005:
+                self._tmr.stop()
+                self.dismissed.emit()
+                self.close()
+                return
+        for p in self._particles:
+            p["angle"] += p["speed"] * 0.025
+        self.update()
+
+    def _start_fade_out(self):
+        self._fade_in = False
+
+    # Re-use the app's main palette constant names where possible for readability
+    _LOGO_PRI   = QColor("#3B82F6")
+    _LOGO_DARK  = QColor("#111827")
+    _LOGO_GREY  = QColor("#6B7280")
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setOpacity(self._opacity)
+        W, H = self.width(), self.height()
+        cx, cy = W / 2, H / 2
+
+        # card background
+        p.setBrush(QColor(255, 255, 255, 235))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawRoundedRect(QRectF(2, 2, W - 4, H - 4), 20, 20)
+
+        # orbital guide
+        pen = QPen(QColor("#E5E7EB"), 1.5)
+        pen.setStyle(Qt.PenStyle.DotLine)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(QRectF(cx - 155, cy - 155, 310, 310))
+
+        # particles
+        for pt in self._sparks:
+            px = cx + math.cos(pt["angle"]) * pt["radius"]
+            py = cy + math.sin(pt["angle"]) * pt["radius"]
+            # wobble
+            px += math.sin(self._tick * 0.03 + pt["wobble_p"]) * pt["wobble_a"]
+            py += math.cos(self._tick * 0.03 + pt["wobble_p"]) * pt["wobble_a"]
+            col = QColor(pt["color"])
+            col.setAlpha(210)
+            p.setBrush(QBrush(col))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.drawEllipse(QRectF(px - pt["size"] / 2, py - pt["size"] / 2, pt["size"], pt["size"]))
+
+        # centre white disc
+        p.setBrush(QColor(255, 255, 255, 250))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawEllipse(QRectF(cx - 90, cy - 90, 180, 180))
+
+        # title
+        p.setPen(self._LOGO_DARK)
+        p.setFont(QFont("Courier New", 28, QFont.Weight.Bold))
+        p.drawText(QRectF(0, cy - 42, W, 42), Qt.AlignmentFlag.AlignCenter, "JARVIS")
+
+        # subtitle
+        p.setPen(self._LOGO_GREY)
+        p.setFont(QFont("Courier New", 12))
+        p.drawText(QRectF(0, cy + 4, W, 26), Qt.AlignmentFlag.AlignCenter, "M45")
+
+        # loading indicator
+        dots = "." * ((self._tick % 4) + 1)
+        p.setPen(self._LOGO_PRI)
+        p.setFont(QFont("Courier New", 9, QFont.Weight.Bold))
+        p.drawText(QRectF(0, cy + 58, W, 18), Qt.AlignmentFlag.AlignCenter, f"INITIALISING{dots}")
+
+
 class HudCanvas(QWidget):
     def __init__(self, face_path: str, parent=None):
         super().__init__(parent)
@@ -265,30 +537,13 @@ class HudCanvas(QWidget):
         self._pulses: list[float] = [0.0, 50.0, 100.0]
         self._blink      = True
         self._blink_tick = 0
-        self._particles: list[list[float]] = []
-        self._face_px: QPixmap | None = None
-        self._load_face(face_path)
+        self._sparks: list[list[float]] = []
+
+        self._core = _ParticleCore()
 
         self._tmr = QTimer(self)
         self._tmr.timeout.connect(self._step)
         self._tmr.start(16)
-
-    def _load_face(self, path: str):
-        try:
-            from PIL import Image, ImageDraw
-            import io
-            img = Image.open(path).convert("RGBA")
-            sz  = min(img.size)
-            img = img.resize((sz, sz), Image.LANCZOS)
-            mk  = Image.new("L", (sz, sz), 0)
-            ImageDraw.Draw(mk).ellipse((2, 2, sz - 2, sz - 2), fill=255)
-            img.putalpha(mk)
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            px = QPixmap(); px.loadFromData(buf.getvalue())
-            self._face_px = px
-        except Exception:
-            self._face_px = None
 
     def _step(self):
         self._tick += 1
@@ -327,15 +582,20 @@ class HudCanvas(QWidget):
             cx, cy = self.width() / 2, self.height() / 2
             ang = random.uniform(0, 2 * math.pi)
             r_s = fw * 0.28
-            self._particles.append([
+            self._sparks.append([
                 cx + math.cos(ang) * r_s, cy + math.sin(ang) * r_s,
                 math.cos(ang) * random.uniform(0.9, 2.4),
                 math.sin(ang) * random.uniform(0.9, 2.4) - 0.4, 1.0,
             ])
-        self._particles = [
+        self._sparks = [
             [p[0]+p[2], p[1]+p[3], p[2]*0.97, p[3]*0.97, p[4]-0.028]
-            for p in self._particles if p[4] > 0
+            for p in self._sparks if p[4] > 0
         ]
+
+        # animate particle core
+        listening = (self.state == "LISTENING" and not self.muted)
+        self._core.set_state(self.state, self.muted)
+        self._core.step(0.016, listening)
 
         self._blink_tick += 1
         if self._blink_tick >= 38:
@@ -431,32 +691,11 @@ class HudCanvas(QWidget):
             p.drawLine(QPointF(bx, by), QPointF(bx + dx * bl, by))
             p.drawLine(QPointF(bx, by), QPointF(bx, by + dy * bl))
 
-        # face
-        if self._face_px:
-            fsz    = int(fw * 0.62 * self._scale)
-            scaled = self._face_px.scaled(
-                fsz, fsz,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            p.drawPixmap(int(cx - fsz / 2), int(cy - fsz / 2), scaled)
-        else:
-            orb_r = int(fw * 0.27 * self._scale)
-            oc    = (251, 113, 133) if self.muted else (79, 195, 247)
-            for i in range(8, 0, -1):
-                r2  = int(orb_r * i / 8)
-                frc = i / 8
-                a   = max(0, min(255, int(self._halo * 1.1 * frc)))
-                p.setBrush(QBrush(QColor(int(oc[0]*frc), int(oc[1]*frc), int(oc[2]*frc), a)))
-                p.setPen(Qt.PenStyle.NoPen)
-                p.drawEllipse(QRectF(cx - r2, cy - r2, r2 * 2, r2 * 2))
-            p.setPen(QPen(qcol(C.PRI, min(255, int(self._halo * 2))), 1))
-            p.setFont(QFont("Courier New", 13, QFont.Weight.Bold))
-            p.drawText(QRectF(cx - 80, cy - 14, 160, 28),
-                       Qt.AlignmentFlag.AlignCenter, "J.A.R.V.I.S")
+        # particle core (replaces static face)
+        self._core.paint(p, cx, cy, fw, self._tick)
 
-        # particles
-        for pt in self._particles:
+        # sparks
+        for pt in self._sparks:
             a = max(0, min(255, int(pt[4] * 255)))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QBrush(qcol(C.PRI, a)))
@@ -1060,6 +1299,22 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
 
+    def _toggle_pip(self):
+        if self._pip_window is not None:
+            self._pip_window.close()
+            self._pip_window = None
+            self._pip_btn.setText("◉  PiP MODE")
+            return
+        try:
+            from actions.pip_mode import PiPWindow
+            self._pip_window = PiPWindow("face.png", 180)
+            self._pip_window.set_state(self.hud.state)
+            self._pip_window.set_muted(self._muted)
+            self._pip_window.show()
+            self._pip_btn.setText("◉  PiP ACTIVE")
+        except Exception:
+            self._pip_window = None
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if self._overlay and self._overlay.isVisible():
@@ -1303,6 +1558,23 @@ class MainWindow(QMainWindow):
         fs_btn.clicked.connect(self._toggle_fullscreen)
         lay.addWidget(fs_btn)
 
+        self._pip_btn = QPushButton("◉  PiP MODE")
+        self._pip_btn.setFixedHeight(26)
+        self._pip_btn.setFont(QFont("Courier New", 7))
+        self._pip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pip_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent; color: {C.TEXT_MED};
+                border: 1px solid {C.BORDER}; border-radius: 3px;
+            }}
+            QPushButton:hover {{
+                color: {C.PRI}; border: 1px solid {C.BORDER_B};
+            }}
+        """)
+        self._pip_btn.clicked.connect(self._toggle_pip)
+        lay.addWidget(self._pip_btn)
+        self._pip_window = None
+
         return w
 
     def _build_input_row(self) -> QHBoxLayout:
@@ -1375,6 +1647,11 @@ class MainWindow(QMainWindow):
         self._muted = not self._muted
         self.hud.muted = self._muted
         self._style_mute_btn()
+        if self._pip_window is not None:
+            try:
+                self._pip_window.set_muted(self._muted)
+            except Exception:
+                pass
         if self._muted:
             self._apply_state("MUTED")
             self._log.append_log("SYS: Microphone muted.")
@@ -1412,6 +1689,12 @@ class MainWindow(QMainWindow):
     def _apply_state(self, state: str):
         self.hud.state    = state
         self.hud.speaking = (state == "SPEAKING")
+        if self._pip_window is not None:
+            try:
+                self._pip_window.set_state(state)
+                self._pip_window.set_muted(self._muted)
+            except Exception:
+                pass
 
     def _check_config(self) -> bool:
         if not API_FILE.exists(): return False
@@ -1460,9 +1743,16 @@ class JarvisUI:
     def __init__(self, face_path: str, size=None):
         self._app = QApplication.instance() or QApplication(sys.argv)
         self._app.setStyle("Fusion")
+
+        splash = SplashScreen()
+        splash.show()
+
         self._win = MainWindow(face_path)
         self._win.show()
         self.root = _RootShim(self._app)
+
+        splash.dismissed.connect(splash.deleteLater)
+        splash._start_fade_out()
 
     @property
     def muted(self) -> bool:

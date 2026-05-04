@@ -1,4 +1,4 @@
-#  Jarvis M45
+# <img src="face.svg" alt="JARVIS M45" width="64" height="64" align="left" style="margin-right:12px"/> Jarvis M45
 
 ### The Ultimate Cross-Platform AI Voice Assistant
 
