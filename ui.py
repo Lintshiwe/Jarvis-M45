@@ -1311,6 +1311,7 @@ class MainWindow(QMainWindow):
             self._pip_window = PiPWindow("face.png")
             self._pip_window.set_state(self.hud.state)
             self._pip_window.set_muted(self._muted)
+            self._pip_window.muted_toggle.connect(self._toggle_mute)
             self._pip_window.show()
             self._pip_btn.setText("◉  PiP ACTIVE")
             self.showMinimized()

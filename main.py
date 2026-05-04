@@ -991,8 +991,9 @@ class JarvisLive:
             print("[JARVIS] 🛑 Recv cancelled", flush=True)
         except Exception as e:
             err_str = str(e)
-            if "1008" in err_str:
-                print(f"[JARVIS] ❌ Recv: API policy error", flush=True)
+            if "1008" in err_str or "1011" in err_str:
+                code = "1008" if "1008" in err_str else "1011"
+                print(f"[JARVIS] ❌ Recv: API {code} (server error)", flush=True)
             else:
                 print(f"[JARVIS] ❌ Recv: {e}", flush=True)
                 traceback.print_exc()
@@ -1083,8 +1084,8 @@ class JarvisLive:
                     sub_errs = [str(se) for se in e.exceptions]
 
                 is_policy = (
-                    "1008" in err_str or "policy violation" in err_str or
-                    any("1008" in s or "policy violation" in s for s in sub_errs)
+                    "1008" in err_str or "1011" in err_str or "policy violation" in err_str or
+                    any("1008" in s or "1011" in s or "policy violation" in s for s in sub_errs)
                 )
                 if is_policy:
                     attempts += 1
