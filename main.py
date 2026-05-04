@@ -50,8 +50,7 @@ SEND_SAMPLE_RATE    = 16000
 RECEIVE_SAMPLE_RATE = 24000
 SEND_CHUNK_SIZE     = 1024     # 64ms input buffer
 RECV_CHUNK_SIZE     = 4096     # 170ms output buffer (prevents underrun)
-PLAY_TIMEOUT        = 0.5      # seconds to wait for next audio chunk
-PRE_BUFFER_CHUNKS   = 4        # pre-buffer this many chunks before playing
+PLAY_TIMEOUT        = 0.5      # seconds to wait for next audio chunk before checking turn_done
 
 def _get_api_key() -> str:
     with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -995,25 +994,6 @@ class JarvisLive:
         stream.start()
 
         try:
-            # Pre-buffer: wait for first few chunks before starting playback
-            pre_buffer = []
-            while len(pre_buffer) < PRE_BUFFER_CHUNKS:
-                try:
-                    chunk = await asyncio.wait_for(
-                        self.audio_in_queue.get(),
-                        timeout=2.0
-                    )
-                    pre_buffer.append(chunk)
-                except asyncio.TimeoutError:
-                    break
-            
-            # Write pre-buffered chunks to device
-            for chunk in pre_buffer:
-                await asyncio.to_thread(stream.write, chunk)
-            
-            pre_buffer.clear()
-            self.set_speaking(True)
-
             while True:
                 try:
                     chunk = await asyncio.wait_for(
@@ -1026,13 +1006,15 @@ class JarvisLive:
                         and self._turn_done_event.is_set()
                         and self.audio_in_queue.empty()
                     ):
-                        # Grace period: wait a bit more to drain device buffer
+                        # Grace period: let device buffer drain before stopping
                         await asyncio.sleep(0.3)
                         self.set_speaking(False)
                         self._turn_done_event.clear()
                     continue
+
                 self.set_speaking(True)
                 await asyncio.to_thread(stream.write, chunk)
+
         except Exception as e:
             print(f"[JARVIS] ❌ Play: {e}")
             raise
