@@ -1307,7 +1307,7 @@ class MainWindow(QMainWindow):
             return
         try:
             from actions.pip_mode import PiPWindow
-            self._pip_window = PiPWindow("face.png", 180)
+            self._pip_window = PiPWindow("face.png")
             self._pip_window.set_state(self.hud.state)
             self._pip_window.set_muted(self._muted)
             self._pip_window.show()
