@@ -48,7 +48,10 @@ LIVE_MODEL          = "models/gemini-2.5-flash-native-audio-preview-12-2025"
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000
 RECEIVE_SAMPLE_RATE = 24000
-CHUNK_SIZE          = 1024
+SEND_CHUNK_SIZE     = 1024     # 64ms input buffer
+RECV_CHUNK_SIZE     = 4096     # 170ms output buffer (prevents underrun)
+PLAY_TIMEOUT        = 0.5      # seconds to wait for next audio chunk
+PRE_BUFFER_CHUNKS   = 4        # pre-buffer this many chunks before playing
 
 def _get_api_key() -> str:
     with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -869,17 +872,19 @@ class JarvisLive:
         if not self.ui.muted:
             self.ui.set_state("LISTENING")
 
-        # Record for learning
-        try:
-            learn(
-                user_input=str(args.get("description", args.get("query", args.get("action", "")))),
-                tool_called=name,
-                parameters=args,
-                result=str(result)[:300] if result else "",
-                success=not isinstance(result, str) or not result.startswith("Tool '"),
-            )
-        except Exception:
-            pass
+        # Record for learning (skip for internal/shutdown tools)
+        if name not in ("shutdown_jarvis", "save_memory"):
+            try:
+                user_input = " ".join(str(v) for v in args.values() if isinstance(v, str))[:200]
+                learn(
+                    user_input=user_input,
+                    tool_called=name,
+                    parameters=dict(args),
+                    result=str(result)[:300] if result else "",
+                    success=not (isinstance(result, str) and "failed" in str(result).lower()),
+                )
+            except Exception:
+                pass
 
         print(f"[JARVIS] 📤 {name} → {str(result)[:80]}")
         return types.FunctionResponse(
@@ -911,7 +916,7 @@ class JarvisLive:
                 samplerate=SEND_SAMPLE_RATE,
                 channels=CHANNELS,
                 dtype="int16",
-                blocksize=CHUNK_SIZE,
+                blocksize=SEND_CHUNK_SIZE,
                 callback=callback,
             ):
                 print("[JARVIS] 🎤 Mic stream open")
@@ -935,7 +940,7 @@ class JarvisLive:
                         try:
                             self.audio_in_queue.put_nowait(response.data)
                         except asyncio.QueueFull:
-                            pass  # drop audio if queue is full (playing too slow)
+                            print("[JARVIS] ⚠️ Audio queue full — dropping chunk", flush=True)
 
                     if response.server_content:
                         sc = response.server_content
@@ -985,16 +990,35 @@ class JarvisLive:
             samplerate=RECEIVE_SAMPLE_RATE,
             channels=CHANNELS,
             dtype="int16",
-            blocksize=CHUNK_SIZE,
+            blocksize=RECV_CHUNK_SIZE,
         )
         stream.start()
 
         try:
+            # Pre-buffer: wait for first few chunks before starting playback
+            pre_buffer = []
+            while len(pre_buffer) < PRE_BUFFER_CHUNKS:
+                try:
+                    chunk = await asyncio.wait_for(
+                        self.audio_in_queue.get(),
+                        timeout=2.0
+                    )
+                    pre_buffer.append(chunk)
+                except asyncio.TimeoutError:
+                    break
+            
+            # Write pre-buffered chunks to device
+            for chunk in pre_buffer:
+                await asyncio.to_thread(stream.write, chunk)
+            
+            pre_buffer.clear()
+            self.set_speaking(True)
+
             while True:
                 try:
                     chunk = await asyncio.wait_for(
                         self.audio_in_queue.get(),
-                        timeout=0.1
+                        timeout=PLAY_TIMEOUT
                     )
                 except asyncio.TimeoutError:
                     if (
@@ -1002,6 +1026,8 @@ class JarvisLive:
                         and self._turn_done_event.is_set()
                         and self.audio_in_queue.empty()
                     ):
+                        # Grace period: wait a bit more to drain device buffer
+                        await asyncio.sleep(0.3)
                         self.set_speaking(False)
                         self._turn_done_event.clear()
                     continue
@@ -1033,8 +1059,8 @@ class JarvisLive:
                 ):
                     self.session        = session
                     self._loop          = asyncio.get_event_loop()
-                    self.audio_in_queue = asyncio.Queue(maxsize=200)
-                    self.out_queue      = asyncio.Queue(maxsize=10)
+                    self.audio_in_queue = asyncio.Queue(maxsize=500)
+                    self.out_queue      = asyncio.Queue(maxsize=20)
                     self._turn_done_event = asyncio.Event()
 
                     print("[JARVIS] ✅ Connected.")
