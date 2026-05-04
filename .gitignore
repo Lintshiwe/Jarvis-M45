@@ -1,0 +1,39 @@
+# API keys & secrets
+config/api_keys.json
+
+# User data
+memory/long_term.json
+documents/
+pictures/chat_log.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env
+.venv
+
+# PyInstaller output
+*.spec.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
