@@ -226,6 +226,18 @@ def _call_tool(tool: str, parameters: dict, speak: Callable | None) -> str:
         from actions.system_command import system_command
         return system_command(parameters=parameters, player=None) or "Done."
 
+    elif tool == "system_explorer":
+        from actions.system_explorer import system_explorer
+        return system_explorer(parameters=parameters) or "Done."
+
+    elif tool == "system_learning":
+        from actions.system_learning import get_learning_context, reset_learning
+        action = parameters.get("action", "view_context").lower()
+        if action in ("reset", "reset_learning"):
+            return reset_learning()
+        ctx = get_learning_context()
+        return ctx or "No learning data yet."
+
     elif tool == "desktop_control":
         from actions.desktop import desktop_control
         return desktop_control(parameters=parameters, player=None) or "Done."

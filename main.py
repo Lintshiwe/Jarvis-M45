@@ -31,6 +31,8 @@ from actions.dev_agent         import dev_agent
 from actions.web_search        import web_search as web_search_action
 from actions.computer_control  import computer_control
 from actions.game_updater      import game_updater
+from actions.system_learning    import learn, get_learning_context
+from actions.system_explorer    import system_explorer
 
 
 def get_base_dir():
@@ -530,7 +532,110 @@ TOOL_DECLARATIONS = [
             },
         }
     },
+    {
+        "name": "system_explorer",
+        "description": (
+            "Deeply explores the computer. Search filesystem for files by name/path/extension, "
+            "search file contents (like grep), find installed applications, analyze running processes, "
+            "check disk usage per directory, explore system environment variables. "
+            "Use this to investigate ANYTHING on the computer: find files, check what's installed, "
+            "see what's running, analyze storage, search within documents. "
+            "The user might say: 'find all Python files', 'search for files containing TODO', "
+            "'what apps are installed', 'what's using my disk space', 'find large files', "
+            "'search my documents for project notes', 'what processes are running'."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "action":       {"type": "STRING", "description": "search_files | search_content | find_apps | analyze_processes | analyze_disk | explore_env | explore_all"},
+                "pattern":      {"type": "STRING", "description": "Search pattern: filename pattern (e.g. '*.py'), text to find in files (e.g. 'TODO'), process name filter"},
+                "path":         {"type": "STRING", "description": "Starting directory path (default: home directory)"},
+                "max_results":  {"type": "INTEGER", "description": "Maximum results (default: 50, max: 200)"},
+                "file_type":    {"type": "STRING", "description": "Filter by type: 'file' or 'dir'"},
+            },
+        }
+    },
+    {
+        "name": "system_learning",
+        "description": (
+            "Manages Jarvis's learning and memory. Use to: recall what Jarvis has learned about the user, "
+            "check interaction history, see frequently used tools, view learned preferences, "
+            "or reset all learning data. The user might say: 'what have you learned about me', "
+            "'show your training data', 'reset your memory', 'what do you know'. "
+            "Jarvis learns automatically — this tool is for reviewing learned data."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "action": {"type": "STRING", "description": "view_context | view_history | view_patterns | view_preferences | view_stats | reset_learning"},
+                "category": {"type": "STRING", "description": "For learn_preference: category name"},
+                "key":      {"type": "STRING", "description": "For learn_preference: key name"},
+                "value":    {"type": "STRING", "description": "For learn_preference: value to learn"},
+            },
+        }
+    },
 ]
+
+def _handle_learning(parameters: dict = None) -> str:
+    """Handle system_learning tool calls."""
+    from actions.system_learning import (
+        get_learning_context, _load_store, reset_learning, learn_preference
+    )
+    params = parameters or {}
+    action = params.get("action", "view_context").lower()
+
+    if action in ("view_context", "context", "what_did_you_learn", "show_learning"):
+        ctx = get_learning_context()
+        return ctx if ctx else "I haven't learned much yet, sir. Keep interacting with me and I'll build up knowledge."
+
+    elif action in ("view_history", "history"):
+        history = _load_store("interaction_history.json", [])
+        if not history:
+            return "No interaction history yet."
+        lines = [f"Last {min(20, len(history))} interactions:"]
+        for h in history[-20:]:
+            status = "✓" if h.get("success") else "✗"
+            lines.append(f"  {status} \"{h.get('user_input', '')[:60]}\" → {h.get('tool_called', 'unknown')}")
+        return "\n".join(lines)
+
+    elif action in ("view_patterns", "patterns"):
+        patterns = _load_store("tool_patterns.json", {})
+        if not patterns:
+            return "No tool patterns learned yet."
+        total = sum(len(tools) for tools in patterns.values())
+        return f"Learned {len(patterns)} keyword → tool mappings ({total} total associations)."
+
+    elif action in ("view_preferences", "preferences"):
+        from actions.system_learning import get_learned_preferences
+        prefs = get_learned_preferences()
+        return prefs if prefs else "No preferences learned yet."
+
+    elif action in ("view_stats", "stats"):
+        from actions.system_learning import get_tool_stats
+        stats = get_tool_stats()
+        if not stats:
+            return "No tool statistics yet."
+        lines = ["Tool success rates:"]
+        for tool, s in sorted(stats.items(), key=lambda x: x[1]["success"], reverse=True):
+            total = s["success"] + s["failure"]
+            rate = round(s["success"] / total * 100) if total > 0 else 0
+            lines.append(f"  {tool}: {rate}% success ({s['success']}/{total})")
+        return "\n".join(lines)
+
+    elif action in ("reset", "reset_learning", "forget"):
+        return reset_learning()
+
+    elif action in ("learn_preference", "learn", "remember_preference"):
+        cat = params.get("category", "")
+        key = params.get("key", "")
+        val = params.get("value", "")
+        if cat and key and val:
+            learn_preference(cat, key, val)
+            return f"Learned preference: {cat}/{key} = {val}"
+        return "Specify category, key, and value to learn a preference."
+
+    return f"Unknown learning action: '{action}'. Available: view_context, view_history, view_patterns, view_preferences, view_stats, reset_learning, learn_preference"
+
 
 class JarvisLive:
 
@@ -599,6 +704,12 @@ class JarvisLive:
         parts.append(time_ctx)
         if mem_str:
             parts.append(mem_str)
+
+        # Add learning context
+        learn_ctx = get_learning_context()
+        if learn_ctx:
+            learn_header = "[WHAT YOU HAVE LEARNED — use naturally, improve future responses]\n"
+            parts.append(learn_header + learn_ctx)
 
         return types.LiveConnectConfig(
             response_modalities=["AUDIO"],
@@ -687,6 +798,14 @@ class JarvisLive:
                 r = await loop.run_in_executor(None, lambda: system_command(parameters=args, player=self.ui))
                 result = r or "Command executed."
 
+            elif name == "system_explorer":
+                r = await loop.run_in_executor(None, lambda: system_explorer(parameters=args))
+                result = r or "Exploration complete."
+
+            elif name == "system_learning":
+                r = await loop.run_in_executor(None, lambda: _handle_learning(parameters=args))
+                result = r or "Done."
+
             elif name == "desktop_control":
                 r = await loop.run_in_executor(None, lambda: desktop_control(parameters=args, player=self.ui))
                 result = r or "Done."
@@ -749,6 +868,18 @@ class JarvisLive:
 
         if not self.ui.muted:
             self.ui.set_state("LISTENING")
+
+        # Record for learning
+        try:
+            learn(
+                user_input=str(args.get("description", args.get("query", args.get("action", "")))),
+                tool_called=name,
+                parameters=args,
+                result=str(result)[:300] if result else "",
+                success=not isinstance(result, str) or not result.startswith("Tool '"),
+            )
+        except Exception:
+            pass
 
         print(f"[JARVIS] 📤 {name} → {str(result)[:80]}")
         return types.FunctionResponse(

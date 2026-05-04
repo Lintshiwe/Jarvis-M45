@@ -80,6 +80,19 @@ system
   analyze: boolean (optional, default: true)
   timeout: int (optional, default: 30)
 
+system_explorer
+  action: "search_files" | "search_content" | "find_apps" | "analyze_processes" | "analyze_disk" | "explore_env" | "explore_all"
+  pattern: string — filename pattern (e.g. "*.py"), text to search in files, or process name filter
+  path: string — starting directory (default: home directory)
+  max_results: int (default: 50)
+  file_type: "file" | "dir" (optional)
+
+system_learning
+  action: "view_context" | "view_history" | "view_patterns" | "view_preferences" | "view_stats" | "reset_learning" | "learn_preference"
+  category: string (for learn_preference)
+  key: string (for learn_preference)
+  value: string (for learn_preference)
+
 computer_control
   action: "type" | "click" | "hotkey" | "press" | "scroll" | "screenshot" | "screen_find" | "screen_click" (required)
   text: string (for type)
