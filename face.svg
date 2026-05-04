@@ -1,0 +1,77 @@
+<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <!-- Background gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F0F9FF"/>
+    </radialGradient>
+
+    <!-- Text gradient -->
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4FC3F7"/>
+      <stop offset="50%" stop-color="#6EE7B7"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+
+    <!-- Soft blur -->
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="500" height="500" fill="url(#bgGrad)"/>
+
+  <!-- Uneven particle ring -->
+  <g fill="#6EE7B7">
+
+    <!-- random-ish particles -->
+    <circle cx="250" cy="80" r="6"/>
+    <circle cx="320" cy="100" r="4"/>
+    <circle cx="380" cy="170" r="7"/>
+    <circle cx="400" cy="250" r="5"/>
+    <circle cx="370" cy="330" r="6"/>
+    <circle cx="310" cy="390" r="4"/>
+    <circle cx="250" cy="420" r="7"/>
+    <circle cx="180" cy="390" r="5"/>
+    <circle cx="120" cy="330" r="6"/>
+    <circle cx="100" cy="250" r="4"/>
+    <circle cx="130" cy="170" r="7"/>
+    <circle cx="190" cy="100" r="5"/>
+
+  </g>
+
+  <!-- Secondary accent particles -->
+  <g fill="#FCD34D" opacity="0.8">
+    <circle cx="350" cy="140" r="3"/>
+    <circle cx="390" cy="290" r="3"/>
+    <circle cx="150" cy="360" r="3"/>
+    <circle cx="110" cy="210" r="3"/>
+  </g>
+
+  <!-- Soft center glow -->
+  <circle cx="250" cy="250" r="110" fill="#FFFFFF" filter="url(#softGlow)" opacity="0.6"/>
+
+  <!-- JARVIS text (centerpiece) -->
+  <text x="250" y="260"
+        text-anchor="middle"
+        font-size="48"
+        font-family="Poppins, Montserrat, sans-serif"
+        font-weight="700"
+        letter-spacing="4"
+        fill="url(#textGrad)">
+    JARVIS
+  </text>
+
+  <!-- M45 subtitle -->
+  <text x="250" y="300"
+        text-anchor="middle"
+        font-size="18"
+        font-family="Poppins, sans-serif"
+        fill="#6B7280"
+        letter-spacing="3">
+    M45
+  </text>
+
+</svg>

@@ -25,6 +25,8 @@ env/
 
 # PyInstaller output
 *.spec.bak
+JARVIS-M45.spec
+face_backup.png
 
 # OS files
 .DS_Store

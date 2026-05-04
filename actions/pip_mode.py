@@ -33,7 +33,7 @@ class PiPWindow(QWidget):
         self._resizing = False
         self._state = "idle"  # idle | listening | speaking | thinking
         self._animation_angle = 0
-        self._state_color = QColor("#00d4ff")  # Jarvis blue
+        self._state_color = QColor("#4FC3F7")  # Jarvis blue
         
         # Load face image
         self._face = QPixmap(face_path)
@@ -67,12 +67,12 @@ class PiPWindow(QWidget):
         """Update Jarvis state for visual feedback."""
         self._state = state.lower()
         colors = {
-            "idle":      QColor("#00d4ff"),
-            "listening": QColor("#00ff88"),
-            "speaking":  QColor("#ffcc00"),
-            "thinking":  QColor("#ff6b00"),
+            "idle":      QColor("#4FC3F7"),
+            "listening": QColor("#6EE7B7"),
+            "speaking":  QColor("#FCD34D"),
+            "thinking":  QColor("#A78BFA"),
         }
-        self._state_color = colors.get(self._state, QColor("#00d4ff"))
+        self._state_color = colors.get(self._state, QColor("#4FC3F7"))
         self.update()
     
     def set_muted(self, muted: bool):
@@ -100,7 +100,7 @@ class PiPWindow(QWidget):
         painter.setClipPath(path)
         
         # Background — dark semi-transparent
-        painter.setBrush(QColor(0, 6, 10, 220))
+        painter.setBrush(QColor(240, 249, 255, 220))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(cx - r, cy - r, r * 2, r * 2)
         
@@ -117,7 +117,7 @@ class PiPWindow(QWidget):
             
             # Dark overlay for muted state
             if self._muted:
-                painter.setBrush(QColor(255, 51, 85, 80))
+                painter.setBrush(QColor(251, 113, 133, 80))
                 painter.drawEllipse(cx - r, cy - r, r * 2, r * 2)
         
         # State ring glow
@@ -149,7 +149,7 @@ class PiPWindow(QWidget):
         
         # Muted indicator
         if self._muted:
-            painter.setPen(QColor("#ff3355"))
+            painter.setPen(QColor("#F87171"))
             painter.setFont(QFont("Arial", r // 5, QFont.Weight.Bold))
             painter.drawText(QRect(0, 0, w, h), Qt.AlignmentFlag.AlignCenter, "MUTED")
         
