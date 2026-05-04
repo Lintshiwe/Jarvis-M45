@@ -1,4 +1,4 @@
-# 🤖 Jarvis M45
+#  Jarvis M45
 
 ### The Ultimate Cross-Platform AI Voice Assistant
 
@@ -6,7 +6,7 @@
 
 ---
 
-## ✨ What Makes Jarvis M45 Different
+##  What Makes Jarvis M45 Different
 
 Jarvis M45 doesn't just follow scripts. It **understands intent**. Say things naturally:
 
@@ -21,29 +21,29 @@ Jarvis M45 doesn't just follow scripts. It **understands intent**. Say things na
 
 ---
 
-## 🚀 Capabilities
+##  Capabilities
 
 | Category | Features |
 |----------|----------|
-| 🎙️ **Voice** | Real-time bidirectional audio, any language, ultra-low latency |
-| 🖥️ **System Control** | Launch/close apps, volume, brightness, WiFi, dark mode, lock, restart, keyboard shortcuts |
-| 🔧 **System Diagnostics** | Disk space, memory, CPU, processes, network, services, logs, packages, temperature, battery, firewall, SSH, Docker, Git — on all 3 OSes |
-| 🧠 **AI Learning** | Learns from every interaction — remembers preferences, adapts behavior, improves over time |
-| 🔍 **Deep Exploration** | Searches entire filesystem, analyzes processes, explores installed apps, finds files by name or content |
-| 👁️ **Vision** | Real-time screen capture & analysis, webcam access |
-| 🌐 **Web** | Smart search with deep research, browser automation (Playwright), content extraction, social media capture |
-| 📂 **Files** | Process PDF, Word, Excel, CSV, JSON, images, audio, video, code, archives, presentations |
-| ⌨️ **Typing** | Type text, press keys, run shell commands |
-| 💬 **Messaging** | Send WhatsApp/Telegram/Discord messages |
-| ⏰ **Reminders** | Set timed reminders with notifications |
-| ✈️ **Travel** | Flight search & tracking |
-| 🎮 **Gaming** | Steam & Epic game updates/management |
-| 🎬 **YouTube** | Search, play, download, get transcripts & summaries |
-| 💻 **Dev Tools** | Code generation, explanation, execution, project scaffolding |
+|  **Voice** | Real-time bidirectional audio, any language, ultra-low latency |
+|  **System Control** | Launch/close apps, volume, brightness, WiFi, dark mode, lock, restart, keyboard shortcuts |
+|  **System Diagnostics** | Disk space, memory, CPU, processes, network, services, logs, packages, temperature, battery, firewall, SSH, Docker, Git — on all 3 OSes |
+|  **AI Learning** | Learns from every interaction — remembers preferences, adapts behavior, improves over time |
+|  **Deep Exploration** | Searches entire filesystem, analyzes processes, explores installed apps, finds files by name or content |
+|  **Vision** | Real-time screen capture & analysis, webcam access |
+|  **Web** | Smart search with deep research, browser automation (Playwright), content extraction, social media capture |
+|  **Files** | Process PDF, Word, Excel, CSV, JSON, images, audio, video, code, archives, presentations |
+|  **Typing** | Type text, press keys, run shell commands |
+|  **Messaging** | Send WhatsApp/Telegram/Discord messages |
+|  **Reminders** | Set timed reminders with notifications |
+|  **Travel** | Flight search & tracking |
+|  **Gaming** | Steam & Epic game updates/management |
+|  **YouTube** | Search, play, download, get transcripts & summaries |
+|  **Dev Tools** | Code generation, explanation, execution, project scaffolding |
 
 ---
 
-## ⚡ Quick Start
+##  Quick Start
 
 ```bash
 git clone https://github.com/Lintshiwe/Jarvis-M45.git
@@ -56,7 +56,7 @@ python main.py           # On first launch, enter your Gemini API key
 
 ---
 
-## 📦 Build Standalone Executable
+##  Build Standalone Executable
 
 Build a single-file app for distribution:
 
@@ -75,7 +75,7 @@ Pre-built binaries are available in the [Releases](https://github.com/Lintshiwe/
 
 ---
 
-## 🧠 How It Works
+##  How It Works
 
 ```
 Your Voice → Gemini Live API → Tool Selection → Action Execution
@@ -92,7 +92,7 @@ Your Voice → Gemini Live API → Tool Selection → Action Execution
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 Jarvis-M45/
@@ -122,7 +122,7 @@ Jarvis-M45/
 
 ---
 
-## 📋 Requirements
+##  Requirements
 
 | Requirement | Details |
 |-------------|---------|
@@ -133,7 +133,7 @@ Jarvis-M45/
 
 ---
 
-## 🔐 Safety
+##  Safety
 
 - **No API key bundled** — you provide your own
 - **Dangerous commands** (restart, shutdown, sudo) require explicit confirmation
@@ -143,12 +143,12 @@ Jarvis-M45/
 
 ---
 
-## 👤 Creator
+##  Creator
 
 **Lintshiwe Ntoampi**
 
 ---
 
-## 📄 License
+##  License
 
 This project is released into the public domain. Do whatever you want with it.
