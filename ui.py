@@ -1304,6 +1304,7 @@ class MainWindow(QMainWindow):
             self._pip_window.close()
             self._pip_window = None
             self._pip_btn.setText("◉  PiP MODE")
+            self.showNormal()
             return
         try:
             from actions.pip_mode import PiPWindow
@@ -1312,6 +1313,7 @@ class MainWindow(QMainWindow):
             self._pip_window.set_muted(self._muted)
             self._pip_window.show()
             self._pip_btn.setText("◉  PiP ACTIVE")
+            self.showMinimized()
         except Exception:
             self._pip_window = None
 

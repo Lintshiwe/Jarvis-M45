@@ -141,9 +141,9 @@ class PiPWindow(QWidget):
         screen = QApplication.primaryScreen().availableGeometry()
         self.move((screen.width() - NOTCH_W) // 2, 5)
 
-        # left cluster — reacts when Jarvis speaks
-        self._speak_cluster = _ReactiveCluster(28, NOTCH_H / 2, BLUE, GREEN)
-        # right cluster — reacts when user is talking (listening)
+        # left cluster — Jarvis (always green)
+        self._speak_cluster = _ReactiveCluster(28, NOTCH_H / 2, GREEN, GREEN)
+        # right cluster — user (always blue)
         self._listen_cluster = _ReactiveCluster(NOTCH_W - 28, NOTCH_H / 2, BLUE, BLUE)
 
         self._tmr = QTimer(self)
