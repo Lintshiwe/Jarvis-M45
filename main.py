@@ -9,6 +9,8 @@ from pathlib import Path
 import sounddevice as sd
 from google import genai
 from google.genai import types
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QLineEdit
 from ui import JarvisUI
 from memory.memory_manager import (
     load_memory, update_memory, format_memory_for_prompt,
@@ -977,8 +979,17 @@ class JarvisLive:
                         await self.session.send_tool_response(
                             function_responses=fn_responses
                         )
+
+                    # Handle text/thought parts (model may send these alongside audio)
+                    if hasattr(response, 'text') and response.text:
+                        pass  # text parts handled via output_transcription
+                    if hasattr(response, 'thought') and response.thought:
+                        pass  # thought parts — ignore silently
+
+        except asyncio.CancelledError:
+            print("[JARVIS] 🛑 Recv cancelled", flush=True)
         except Exception as e:
-            print(f"[JARVIS] ❌ Recv: {e}")
+            print(f"[JARVIS] ❌ Recv: {e}", flush=True)
             traceback.print_exc()
             raise
 
@@ -1062,19 +1073,153 @@ class JarvisLive:
             print("[JARVIS] 🔄 Reconnecting in 3s...")
             await asyncio.sleep(3)
 
-def main():
-    ui = JarvisUI("face.png")
-
-    def runner():
-        ui.wait_for_api_key()
-        jarvis = JarvisLive(ui)
+class MiniJarvisUI:
+    """Lightweight PiP UI with same interface as JarvisUI."""
+    
+    def __init__(self, face_path: str, size: int = 200):
+        from actions.pip_mode import PiPWindow
+        self._pip = PiPWindow(face_path, size)
+        self._muted = False
+        self._text_command_cb = None
+        
+        # Connect PiP signals
+        self._pip.muted_toggle.connect(self._toggle_mute)
+        self._pip.closed.connect(self._on_close)
+        
+        # Create a small text input overlay for typing commands
+        self._create_input_overlay()
+    
+    def _create_input_overlay(self):
+        """Create a hidden text input widget for typing commands."""
+        self._cmd_input = QLineEdit()
+        self._cmd_input.setPlaceholderText("Type command...")
+        self._cmd_input.setStyleSheet("""
+            QLineEdit {
+                background: rgba(0, 10, 20, 230);
+                color: #8ffcff;
+                border: 1px solid #0d3347;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font: 11px 'Courier New';
+            }
+        """)
+        self._cmd_input.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
+        )
+        self._cmd_input.setFixedWidth(300)
+        self._cmd_input.hide()
+        self._cmd_input.returnPressed.connect(self._on_text_submit)
+    
+    def _on_text_submit(self):
+        text = self._cmd_input.text().strip()
+        self._cmd_input.clear()
+        self._cmd_input.hide()
+        if text and self._text_command_cb:
+            self._text_command_cb(text)
+    
+    def _toggle_mute(self):
+        self._muted = not self._muted
+        self._pip.set_muted(self._muted)
+    
+    def _on_close(self):
+        QApplication.quit()
+    
+    @property
+    def muted(self) -> bool:
+        return self._muted
+    
+    @muted.setter
+    def muted(self, v: bool):
+        self._muted = v
+        self._pip.set_muted(v)
+    
+    @property
+    def on_text_command(self):
+        return self._text_command_cb
+    
+    @on_text_command.setter
+    def on_text_command(self, cb):
+        self._text_command_cb = cb
+    
+    def set_state(self, state: str):
+        self._pip.set_state(state)
+    
+    def write_log(self, text: str):
+        pass  # No log in PiP mode
+    
+    def wait_for_api_key(self):
+        """Check if API key exists; if not, show setup via full UI."""
+        from pathlib import Path
+        config_file = Path(__file__).parent / "config" / "api_keys.json"
+        if not config_file.exists():
+            return
+        import json
         try:
-            asyncio.run(jarvis.run())
-        except KeyboardInterrupt:
-            print("\n🔴 Shutting down...")
+            data = json.loads(config_file.read_text())
+            if data.get("gemini_api_key"):
+                return
+        except Exception:
+            pass
+        # API key missing — this should have been handled before PiP starts
+    
+    @property
+    def root(self):
+        """Compatibility shim."""
+        class _Shim:
+            def mainloop(self):
+                QApplication.instance().exec() if QApplication.instance() else None
+        return _Shim()
 
-    threading.Thread(target=runner, daemon=True).start()
-    ui.root.mainloop()
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="JARVIS M45 AI Assistant")
+    parser.add_argument("--pip", action="store_true", help="Picture-in-Picture mode (round transparent window)")
+    parser.add_argument("--size", type=int, default=200, help="PiP window size (default: 200px)")
+    args = parser.parse_args()
+
+    app = QApplication.instance() or QApplication(sys.argv)
+
+    if args.pip:
+        from actions.pip_mode import PiPWindow
+        pip_ui = MiniJarvisUI("face.png", size=args.size)
+        pip_ui._pip.show()
+
+        def runner():
+            from pathlib import Path
+            config_file = Path(__file__).parent / "config" / "api_keys.json"
+            needs_key = True
+            if config_file.exists():
+                try:
+                    if json.loads(config_file.read_text()).get("gemini_api_key"):
+                        needs_key = False
+                except Exception:
+                    pass
+            if needs_key:
+                ui = JarvisUI("face.png")
+                ui.wait_for_api_key()
+                ui._win.hide()
+            jarvis = JarvisLive(pip_ui)
+            try:
+                asyncio.run(jarvis.run())
+            except KeyboardInterrupt:
+                print("\n🔴 Shutting down...")
+
+        threading.Thread(target=runner, daemon=True).start()
+        app.exec()
+    else:
+        ui = JarvisUI("face.png")
+        def runner():
+            ui.wait_for_api_key()
+            jarvis = JarvisLive(ui)
+            try:
+                asyncio.run(jarvis.run())
+            except KeyboardInterrupt:
+                print("\n🔴 Shutting down...")
+        threading.Thread(target=runner, daemon=True).start()
+        ui.root.mainloop()
 
 if __name__ == "__main__":
     main()
