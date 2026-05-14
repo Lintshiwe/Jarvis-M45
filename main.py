@@ -6,7 +6,16 @@ import sys
 import traceback
 from pathlib import Path
 
-import sounddevice as sd
+# Optional audio imports with graceful fallback
+try:
+    import sounddevice as sd
+    AUDIO_AVAILABLE = True
+except (ImportError, OSError) as e:
+    print(f"⚠️  Audio module not available: {e}")
+    print("📝 Running in limited mode - voice features disabled")
+    AUDIO_AVAILABLE = False
+    sd = None
+
 from google import genai
 from google.genai import types
 from PyQt6.QtCore import Qt
@@ -35,6 +44,8 @@ from actions.computer_control  import computer_control
 from actions.game_updater      import game_updater
 from actions.system_learning    import learn, get_learning_context
 from actions.system_explorer    import system_explorer
+from actions.automation         import automation
+from actions.api_controller     import api_controller
 
 
 def get_base_dir():
@@ -579,6 +590,57 @@ TOOL_DECLARATIONS = [
             },
         }
     },
+    {
+        "name": "automation",
+        "description": (
+            "Advanced automation and workflow execution. Use for: running automated workflows, "
+            "scheduling tasks, executing macros, monitoring system conditions, batch processing, "
+            "and looping operations. Examples: 'automate my morning routine', 'schedule backup for tonight', "
+            "'run my daily report macro', 'monitor CPU usage', 'execute these 5 steps in sequence', "
+            "'repeat this action until done'. Supports complex multi-step automation without manual intervention."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "mode": {"type": "STRING", "description": "workflow | schedule | macro | monitor | batch | loop"},
+                "name": {"type": "STRING", "description": "Name of the workflow/macro/task"},
+                "actions": {"type": "ARRAY", "items": {"type": "OBJECT"}, "description": "List of actions to execute"},
+                "schedule_time": {"type": "STRING", "description": "When to run (YYYY-MM-DD HH:MM or natural language)"},
+                "condition": {"type": "STRING", "description": "Condition to check for loop/monitor modes"},
+                "interval": {"type": "INTEGER", "description": "Time between repetitions in seconds"},
+                "max_iterations": {"type": "INTEGER", "description": "Maximum number of iterations"},
+                "variables": {"type": "OBJECT", "description": "Variables to use in templates"}
+            },
+            "required": ["mode"]
+        }
+    },
+    {
+        "name": "api_controller",
+        "description": (
+            "Universal API integration controller. Use for: making HTTP requests to any API, "
+            "integrating with services like GitHub/Slack/Discord/Twitter/Notion/Telegram, "
+            "authentication (OAuth, API keys, Bearer tokens), creating webhooks, parsing responses, "
+            "chaining multiple API calls. Examples: 'post to Slack channel', 'create GitHub issue', "
+            "'send Discord message', 'fetch data from REST API', 'integrate with Notion database', "
+            "'call webhook endpoint'. Connects Jarvis to ANY web service or API."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "action": {"type": "STRING", "description": "request | authenticate | integrate | webhook | parse | chain"},
+                "method": {"type": "STRING", "description": "HTTP method: GET | POST | PUT | DELETE | PATCH"},
+                "url": {"type": "STRING", "description": "API endpoint URL"},
+                "headers": {"type": "OBJECT", "description": "Custom HTTP headers"},
+                "body": {"type": "OBJECT", "description": "Request body for POST/PUT/PATCH"},
+                "auth_type": {"type": "STRING", "description": "none | api_key | bearer | basic | oauth"},
+                "auth_credentials": {"type": "OBJECT", "description": "Authentication credentials"},
+                "service": {"type": "STRING", "description": "Pre-configured service: github | slack | discord | twitter | notion | telegram"},
+                "parse_as": {"type": "STRING", "description": "Response format: json | xml | text | html"},
+                "timeout": {"type": "INTEGER", "description": "Request timeout in seconds (default: 30)"}
+            },
+            "required": ["action"]
+        }
+    },
 ]
 
 def _handle_learning(parameters: dict = None) -> str:
@@ -853,6 +915,14 @@ class JarvisLive:
             elif name == "flight_finder":
                 r = await loop.run_in_executor(None, lambda: flight_finder(parameters=args, player=self.ui))
                 result = r or "Done."
+
+            elif name == "automation":
+                r = await loop.run_in_executor(None, lambda: automation(parameters=args, player=self.ui, speak=self.speak))
+                result = r or "Automation executed."
+
+            elif name == "api_controller":
+                r = await loop.run_in_executor(None, lambda: api_controller(parameters=args, player=self.ui, speak=self.speak))
+                result = r or "API request completed."
 
             elif name == "shutdown_jarvis":
                 self.ui.write_log("SYS: Shutdown requested.")

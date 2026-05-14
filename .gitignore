@@ -1,42 +1,41 @@
-# API keys & secrets
-config/api_keys.json
-
-# User data
-memory/long_term.json
-learning/
-documents/
-pictures/chat_log.txt
-
+```
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+
+# Build artifacts
 dist/
 build/
-*.egg
-.eggs/
+target/
 
-# Virtual environments
-venv/
-env/
-.env
-.venv
-
-# PyInstaller output
-*.spec.bak
-JARVIS-M45.spec
-face_backup.png
-
-# OS files
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-*~
-
-# IDE
+# Editors
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
+*.swp
+*.swo
+*.tmp
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+```
